@@ -25,7 +25,7 @@ let refresh = (req, res) => {
             if (results.rows.length === 0) {
                 return res.status(403).send({
                     success: false,
-                    message: 'User not found.'
+                    message: 'User with refreshToken not found.'
                 })
             } else {
                 jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, decoded) => {
@@ -45,7 +45,6 @@ let refresh = (req, res) => {
             }
         })
         .catch(async (err) => {
-            console.log(err)
             return res.status(500).send({
                 success: false,
                 message: 'Internal Server Error',
@@ -54,4 +53,37 @@ let refresh = (req, res) => {
         })
 }
 
-module.exports = { generateAccessToken, generateRefreshToken, refresh }
+let deleteRefresh = (req, res) => {
+    let refreshToken = req.body.token
+
+    if (!refreshToken) {
+        return res.status(401).send({
+            success: false,
+            message: 'No refresh token provided.'
+        })
+    }
+
+    pool.query('UPDATE public."Users" SET refresh_token = NULL WHERE refresh_token = $1 RETURNING *', [refreshToken])
+        .then(async (results) => {
+            if (results.rowCount === 0) {
+                return res.status(403).send({
+                    success: false,
+                    message: 'User with refreshToken not found.'
+                })
+            } else {
+                return res.status(200).send({
+                    success: true,
+                    message: 'Refresh token deleted successfully.'
+                })
+            }
+        })
+        .catch(async (err) => {
+            return res.status(500).send({
+                success: false,
+                message: 'Internal Server Error',
+                error: err.detail
+            })
+        })
+}
+
+module.exports = { generateAccessToken, generateRefreshToken, refresh, deleteRefresh }

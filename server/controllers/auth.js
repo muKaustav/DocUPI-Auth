@@ -27,21 +27,30 @@ let login = async (req, res) => {
             }
 
             let token = generateAccessToken(payload)
+            let refreshToken = generateRefreshToken(payload)
 
-            return res.status(200).send({
-                success: true,
-                message: 'User logged in successfully.',
-                user: {
-                    user_id: results.rows[0].user_id,
-                    name: results.rows[0].name,
-                    profile_picture: results.rows[0].profile_picture,
-                },
-                accessToken: "Bearer " + token,
-                refreshToken: results.rows[0].refresh_token
-            })
+            pool.query('UPDATE public."Users" SET refresh_token = $1 WHERE user_id = $2 RETURNING *', [refreshToken, results.rows[0].user_id])
+                .then(async (results) => {
+                    return res.status(200).send({
+                        success: true,
+                        message: 'User logged in successfully.',
+                        user: {
+                            user_id: results.rows[0].user_id,
+                            name: results.rows[0].name,
+                            profile_picture: results.rows[0].profile_picture,
+                        },
+                        accessToken: "Bearer " + token,
+                        refreshToken: refreshToken
+                    })
+                })
+                .catch(async (err) => {
+                    return res.status(500).send({
+                        success: false,
+                        message: 'Internal Server Error',
+                        error: err.detail
+                    })
+                })
         }).catch(async (err) => {
-            console.log(err)
-
             return res.status(500).send({
                 success: false,
                 message: 'Internal Server Error',
@@ -81,8 +90,6 @@ let register = async (req, res) => {
                     })
                 })
                 .catch(async (err) => {
-                    console.log(err)
-
                     return res.status(500).send({
                         success: false,
                         message: 'Internal Server Error',
@@ -90,8 +97,6 @@ let register = async (req, res) => {
                     })
                 })
         }).catch(async (err) => {
-            console.log(err)
-
             return res.status(500).send({
                 success: false,
                 message: 'Internal Server Error',
